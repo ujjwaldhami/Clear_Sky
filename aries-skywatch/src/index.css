@@ -179,3 +179,41 @@
     filter: drop-shadow(0 0 4px hsl(var(--primary) / 0.5));
   }
 }
+@keyframes glowPulseGreen {
+  0%, 100% {
+    box-shadow: 0 0 40px rgba(16,185,129,0.18);
+  }
+  50% {
+    box-shadow: 0 0 65px rgba(16,185,129,0.32);
+  }
+}
+
+@keyframes glowPulseAmber {
+  0%, 100% {
+    box-shadow: 0 0 38px rgba(217,119,6,0.18);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(217,119,6,0.30);
+  }
+}
+
+@keyframes glowPulseRed {
+  0%, 100% {
+    box-shadow: 0 0 38px rgba(239,68,68,0.18);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(239,68,68,0.32);
+  }
+}
+
+.glow-green {
+  animation: glowPulseGreen 3.5s ease-in-out infinite;
+}
+
+.glow-amber {
+  animation: glowPulseAmber 3.5s ease-in-out infinite;
+}
+
+.glow-red {
+  animation: glowPulseRed 3.5s ease-in-out infinite;
+}

@@ -106,48 +106,84 @@ class air_traffic_view(APIView):
                 status=400,
             )
 
-        coords = get_coordinates_from_place(place or city)
-        if not coords or coords == (None, None):
+        # 🔐 SAFE GEOCODING
+        try:
+            coords = get_coordinates_from_place(place or city)
+        except Exception as e:
             return Response(
-                {"success": False, "error": "Could not fetch coordinates."},
-                status=400,
+                {
+                    "success": True,
+                    "data": [],
+                    "message": "Air traffic not available for this location",
+                },
+                status=200,
+            )
+
+        # 🔐 HANDLE SMALL / UNKNOWN CITIES
+        if (
+            not coords
+            or not isinstance(coords, (list, tuple))
+            or len(coords) != 2
+            or coords[0] is None
+            or coords[1] is None
+        ):
+            return Response(
+                {
+                    "success": True,
+                    "data": [],
+                    "message": "Air traffic not available for this location",
+                },
+                status=200,
             )
 
         lat, lon = coords
+
+        # 🔐 ENSURE NUMBERS
+        try:
+            lat = float(lat)
+            lon = float(lon)
+        except Exception:
+            return Response(
+                {
+                    "success": True,
+                    "data": [],
+                    "message": "Air traffic not available for this location",
+                },
+                status=200,
+            )
+
         bbox = (lat - 0.5, lon - 0.5, lat + 0.5, lon + 0.5)
 
+        # 🔐 FETCH AIR TRAFFIC SAFELY
         try:
             data = fetch_air_traffic(bbox=bbox)
-        except Exception as e:
+        except Exception:
             return Response(
-                {"success": False, "error": f"Air traffic fetch failed: {str(e)}"},
-                status=500,
+                {
+                    "success": True,
+                    "data": [],
+                    "message": "Air traffic service unavailable",
+                },
+                status=200,
             )
 
-        # Log API call safely
-        try:
-            APICallLog.objects.create(
-                endpoint="/api/air-traffic/",
-                query_params=request.query_params.dict(),
-                response_data=data,
+        if not data or not data.get("success"):
+            return Response(
+                {
+                    "success": True,
+                    "data": [],
+                    "message": "No air traffic data found",
+                },
+                status=200,
             )
+
+        # Safe DB insert
+        try:
+            AirTraffic.objects.create(data=data)
         except Exception:
             pass
 
-        if not data.get("success"):
-            return Response(data, status=500)
-
-        # Safe DB insert
-        saved_data = None
-        try:
-            air_traffic_obj = AirTraffic.objects.create(data=data)
-            saved_data = AirTrafficSerializer(air_traffic_obj).data
-        except Exception as e:
-            saved_data = {"warning": f"Air traffic data could not be saved: {str(e)}"}
-
-        return Response({"success": True, "data": data, "saved_data": saved_data})
-
-
+        return Response({"success": True, "data": data})
 
 
 class WeatherView(APIView):
