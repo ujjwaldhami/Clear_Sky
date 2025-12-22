@@ -87,6 +87,14 @@ export default function Dashboard() {
 
   const weather = weatherData.current_weather;
   const forecast = weatherData.forecast;
+     const validAircraft =
+  trafficData?.data?.aircraft?.filter(
+    (plane) =>
+      !plane.on_ground &&
+      plane.latitude !== null &&
+      plane.longitude !== null
+  ) ?? [];
+
 
   // Compute or use prediction score
   const score =
@@ -117,10 +125,12 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <WeatherCard current={weather} forecast={forecast} />
-        <AirTrafficMiniMap
-          aircraftCount={trafficData?.data.aircraft_count ?? 0}
-          city={city}
-        />
+  
+<AirTrafficMiniMap
+  aircraftCount={validAircraft.length}
+  city={city}
+/>
+
       </div>
 
       <ObservingTips />

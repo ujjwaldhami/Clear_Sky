@@ -9,26 +9,35 @@ interface TrafficMapProps {
   zoom?: number;
 }
 
-export function TrafficMap({ center, aircraft, zoom = 9 }: TrafficMapProps) {
+export function TrafficMap({
+  center,
+  aircraft,
+  zoom = 8,
+}: TrafficMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
 
+  /* =========================
+     INIT MAP
+     ========================= */
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    // Initialize map
     const map = L.map(mapContainerRef.current, {
-      center,
       zoom,
       zoomControl: true,
     });
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: "abcd",
-      maxZoom: 20,
-    }).addTo(map);
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      {
+        attribution:
+          '&copy; OpenStreetMap contributors &copy; CARTO',
+        subdomains: "abcd",
+        maxZoom: 20,
+      }
+    ).addTo(map);
 
     mapRef.current = map;
 
@@ -36,59 +45,85 @@ export function TrafficMap({ center, aircraft, zoom = 9 }: TrafficMapProps) {
       map.remove();
       mapRef.current = null;
     };
-  }, [center, zoom]);
+  }, [zoom]);
 
+  /* =========================
+     UPDATE AIRCRAFT
+     ========================= */
   useEffect(() => {
     if (!mapRef.current) return;
-
     const map = mapRef.current;
+
+    const validAircraft = aircraft.filter(
+      (p) => p.latitude !== null && p.longitude !== null
+    );
+
     const currentMarkers = new Map<string, L.Marker>();
 
-    // Create plane icon with rotation
-    const createPlaneIcon = (rotation: number) => {
-      return L.divIcon({
-        html: `<div style="transform: rotate(${rotation}deg); font-size: 20px;">✈️</div>`,
-        className: "plane-marker",
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
+    /* ✈️ CLEAR YELLOW PLANE ICON */
+    const createPlaneIcon = (rotation: number) =>
+      L.divIcon({
+        html: `
+          <div style="
+            transform: rotate(${rotation}deg);
+            font-size: 28px;
+            color: #facc15; /* yellow-400 */
+            text-shadow:
+              0 0 6px rgba(250,204,21,0.9),
+              0 0 12px rgba(250,204,21,0.6);
+          ">
+            ✈
+          </div>
+        `,
+        className: "",
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
       });
-    };
 
-    // Update markers
-    aircraft.forEach((plane) => {
-      if (plane.latitude === null || plane.longitude === null) return;
-
+    validAircraft.forEach((plane) => {
       const key = plane.icao24;
       let marker = markersRef.current.get(key);
 
       if (!marker) {
-        // Create new marker
-        marker = L.marker([plane.latitude, plane.longitude], {
-          icon: createPlaneIcon(plane.true_track ?? 0),
-        });
+        marker = L.marker(
+          [plane.latitude!, plane.longitude!],
+          {
+            icon: createPlaneIcon(plane.true_track ?? 0),
+          }
+        );
 
-        const popupContent = `
-          <div class="text-sm">
+        marker.bindPopup(`
+          <div style="font-size:12px">
             <strong>${plane.callsign || plane.icao24}</strong><br/>
             Country: ${plane.origin_country}<br/>
-            Altitude: ${plane.baro_altitude ? `${Math.round(plane.baro_altitude)}m` : "N/A"}<br/>
-            Speed: ${plane.velocity ? `${Math.round(plane.velocity * 3.6)} km/h` : "N/A"}<br/>
-            Status: ${plane.on_ground ? "On Ground" : "In Flight"}
+            Altitude: ${
+              plane.baro_altitude
+                ? `${Math.round(plane.baro_altitude)} m`
+                : "N/A"
+            }<br/>
+            Speed: ${
+              plane.velocity
+                ? `${Math.round(plane.velocity * 3.6)} km/h`
+                : "N/A"
+            }
           </div>
-        `;
+        `);
 
-        marker.bindPopup(popupContent);
         marker.addTo(map);
       } else {
-        // Update existing marker
-        marker.setLatLng([plane.latitude, plane.longitude]);
-        marker.setIcon(createPlaneIcon(plane.true_track ?? 0));
+        marker.setLatLng([
+          plane.latitude!,
+          plane.longitude!,
+        ]);
+        marker.setIcon(
+          createPlaneIcon(plane.true_track ?? 0)
+        );
       }
 
       currentMarkers.set(key, marker);
     });
 
-    // Remove markers for aircraft no longer in data
+    /* REMOVE OLD MARKERS */
     markersRef.current.forEach((marker, key) => {
       if (!currentMarkers.has(key)) {
         marker.remove();
@@ -96,7 +131,25 @@ export function TrafficMap({ center, aircraft, zoom = 9 }: TrafficMapProps) {
     });
 
     markersRef.current = currentMarkers;
-  }, [aircraft]);
+
+    /* 🔥 AUTO FIT TO AIRCRAFT */
+    if (validAircraft.length > 0) {
+      const bounds = L.latLngBounds(
+        validAircraft.map(
+          (p) => [p.latitude!, p.longitude!] as [number, number]
+        )
+      );
+
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, {
+          padding: [80, 80],
+          animate: true,
+        });
+      }
+    } else {
+      map.setView(center, zoom);
+    }
+  }, [aircraft, center, zoom]);
 
   return (
     <div
