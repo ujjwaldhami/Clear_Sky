@@ -10,7 +10,10 @@ interface AirTrafficMiniMapProps {
   city: string;
 }
 
-export function AirTrafficMiniMap({ aircraftCount, city }: AirTrafficMiniMapProps) {
+export function AirTrafficMiniMap({
+  aircraftCount,
+  city,
+}: AirTrafficMiniMapProps) {
   const navigate = useNavigate();
 
   return (
@@ -25,6 +28,7 @@ export function AirTrafficMiniMap({ aircraftCount, city }: AirTrafficMiniMapProp
             <Plane className="w-5 h-5 text-primary" />
             <h3 className="text-lg font-semibold">Air Traffic</h3>
           </div>
+
           <Badge variant="secondary" className="text-lg font-bold px-3">
             {aircraftCount}
           </Badge>
@@ -33,15 +37,17 @@ export function AirTrafficMiniMap({ aircraftCount, city }: AirTrafficMiniMapProp
         <div className="bg-muted/20 rounded-lg h-40 mb-4 flex items-center justify-center border border-border relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent" />
           <div className="relative z-10 text-center">
-            <Plane className="w-12 h-12 text-primary/50 mx-auto mb-2 animate-pulse" />
+            <Plane className="w-12 h-12 text-primary/60 mx-auto mb-2 animate-pulse" />
             <p className="text-sm text-muted-foreground">
-              {aircraftCount} aircraft detected near {city}
+              {aircraftCount > 0
+                ? `${aircraftCount} aircraft detected near ${city}`
+                : `No aircraft detected near ${city}`}
             </p>
           </div>
         </div>
 
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="w-full"
           onClick={() => navigate(`/traffic?city=${city}`)}
         >
